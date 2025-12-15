@@ -175,7 +175,7 @@
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const map = L.map('contact-map').setView([5.8520, -55.2038], 13);
+            const map = L.map('contact-map').setView([50.8207531, 3.620864], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
