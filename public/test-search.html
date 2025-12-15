@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Live Search API</title>
+</head>
+<body>
+    <h1>Live Search API Test</h1>
+    <input type="text" id="search" placeholder="Type to search...">
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('search').addEventListener('input', async (e) => {
+            const query = e.target.value;
+            if (query.length < 2) {
+                document.getElementById('results').innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/properties/live-search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                console.log('API Response:', data);
+                
+                const html = data.map(item => `
+                    <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+                        <h3>${item.title}</h3>
+                        <p>District: ${item.district}</p>
+                        <p>Price: ${item.currency} ${item.price}</p>
+                        <p>URL: <a href="${item.url}">${item.url}</a></p>
+                        ${item.image ? `<img src="${item.image}" width="100">` : 'No image'}
+                    </div>
+                `).join('');
+                
+                document.getElementById('results').innerHTML = html || '<p>No results found</p>';
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = '<p>Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>
