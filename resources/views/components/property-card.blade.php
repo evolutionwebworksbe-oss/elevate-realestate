@@ -130,6 +130,12 @@
                 <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
                 {{ $property->district->naam ?? '' }}
             </p>
+            @if($property->address)
+                <p class="text-gray-600 text-sm mb-4 flex items-center">
+                    <i class="fas fa-map-signs mr-2 text-gray-400"></i>
+                    {{ $property->address }}
+                </p>
+            @endif
 
             <!-- Features -->
             <div class="flex items-center gap-6 text-sm text-gray-600 pt-4 border-t border-gray-100">

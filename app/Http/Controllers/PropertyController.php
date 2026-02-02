@@ -279,7 +279,10 @@ class PropertyController extends Controller
         // Search by property name (primary search)
         if ($request->q || $request->search_name) {
             $searchTerm = $request->q ?? $request->search_name;
-            $query->where('titel', 'LIKE', '%' . $searchTerm . '%');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('titel', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
+            });
         }
     
         // Apply filters
@@ -396,7 +399,10 @@ class PropertyController extends Controller
 
         // Search by property name (naam field - same for both languages)
         // Removed status filter to show all properties (even sold/rented)
-        $properties = Property::where('naam', 'LIKE', '%' . $query . '%')
+        $properties = Property::where(function ($q) use ($query) {
+                $q->where('naam', 'LIKE', '%' . $query . '%')
+                  ->orWhere('address', 'LIKE', '%' . $query . '%');
+            })
             ->with(['district', 'currencyRelation', 'images'])
             ->limit(10)
             ->get()
@@ -420,6 +426,7 @@ class PropertyController extends Controller
                     'price' => number_format($property->vraagPrijs, 0, ',', '.'),
                     'currency' => $property->currencyRelation->afkorting ?? '',
                     'district' => $property->district->naam ?? '',
+                    'address' => $property->address,
                     'image' => $imageUrl,
                     'url' => route('properties.show', $property->slug)
                 ];

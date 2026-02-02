@@ -193,6 +193,9 @@
                             <div class="flex-1">
                                 <h3 class="font-semibold text-dark" x-text="result.title"></h3>
                                 <p class="text-sm text-gray-600" x-text="result.district"></p>
+                                <template x-if="result.address">
+                                    <p class="text-sm text-gray-600" x-text="result.address"></p>
+                                </template>
                                 <p class="text-primary font-semibold" x-text="result.currency + ' ' + result.price"></p>
                             </div>
                             <i class="fas fa-chevron-right text-gray-400"></i>

@@ -30,6 +30,7 @@ class PropertyController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('naam', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
                   ->orWhere('id', 'like', "%{$search}%");
             });
         }
