@@ -345,6 +345,18 @@
                                 </select>
                             </div>
 
+                            <!-- Address -->
+                            <div class="md:col-span-2">
+                                <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Adres
+                                </label>
+                                <input type="text" 
+                                       name="address" 
+                                       id="address" 
+                                       value="{{ old('address', $property->address) }}"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+
                             <!-- Directions -->
                             <div class="md:col-span-2">
                                 <label for="directions" class="block text-sm font-medium text-gray-700 mb-2">

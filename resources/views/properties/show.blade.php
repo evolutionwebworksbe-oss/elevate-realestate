@@ -256,6 +256,12 @@
                             <i class="fas fa-map-marker-alt text-primary"></i>
                             <span>{{ $property->district->naam ?? '' }}{{ $property->omgeving ? ', ' . $property->omgeving->naam : '' }}</span>
                         </div>
+                        @if($property->address)
+                        <div class="flex items-center gap-2 text-gray-600 text-sm md:text-base mt-1">
+                            <i class="fas fa-map-signs text-primary"></i>
+                            <span>{{ $property->address }}</span>
+                        </div>
+                        @endif
                     </div>
                     <div class="text-left md:text-right">
                         @if($property->discount && $property->discount > 0 && $property->discount < $property->vraagPrijs)

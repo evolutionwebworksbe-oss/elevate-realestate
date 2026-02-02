@@ -18,6 +18,7 @@ class Property extends Model
         'currency',
         'district_id',
         'omgeving_id',
+        'address',
         'objectType_id',
         'objectSubType_id',
         'status',
