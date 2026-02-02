@@ -557,7 +557,12 @@
                             @endif
                             <div>
                                 <div class="font-bold text-dark text-lg">{{ $agent->name }}</div>
-                                <div class="text-sm text-gray-600">{{ $agent->titleType->name ?? __('messages.agent') }}</div>
+                                @php $agentTitles = $agent->getAllTitles(); @endphp
+                                @if($agentTitles->count() > 0)
+                                    <div class="text-sm text-gray-600">{{ $agentTitles->pluck('name')->join(' • ') }}</div>
+                                @else
+                                    <div class="text-sm text-gray-600">{{ __('messages.agent') }}</div>
+                                @endif
                             </div>
                         </div>
 

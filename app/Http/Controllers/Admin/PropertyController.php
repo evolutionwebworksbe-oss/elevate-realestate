@@ -114,6 +114,7 @@ class PropertyController extends Controller
         $voorzieningen = Voorziening::orderBy('naam')->get();
         $beveiligingTypes = BeveiligingType::orderBy('naam')->get();
         $extraRuimteTypes = ExtraRuimteType::orderBy('naam')->get();
+        $teamMembers = \App\Models\TeamMember::with('titleType')->orderBy('name')->get();
         
         return view('admin.properties.create', compact(
             'districts',
@@ -295,6 +296,10 @@ class PropertyController extends Controller
 
         DB::beginTransaction();
         try {
+            // Get objectType_id from the selected objectSubType
+            $objectSubType = ObjectSubType::findOrFail($validated['objectSubType_id']);
+            $validated['objectType_id'] = $objectSubType->objectType_id;
+            
             // Set defaults for boolean fields
             $validated['byowner'] = $request->has('byowner') ? 1 : 0;
             $validated['featured'] = $request->has('featured') ? 1 : 0;

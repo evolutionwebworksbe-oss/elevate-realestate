@@ -92,7 +92,7 @@
                 @endif
                 
                 @if($property->byowner)
-                    <span class="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-full shadow-lg w-28 text-center">
+                    <span class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg w-28 text-center">
                         {{ strtoupper(__('messages.owner')) }}
                     </span>
                 @endif
@@ -149,6 +149,12 @@
                     <span class="flex items-center gap-2">
                         <i class="fas fa-ruler-combined text-gray-400"></i>
                         <span>{{ $property->woonOppervlakte }} m²</span>
+                    </span>
+                @endif
+                @if($property->perceelOppervlakte)
+                    <span class="flex items-center gap-2">
+                        <i class="fas fa-vector-square text-gray-400"></i>
+                        <span>{{ $property->perceelOppervlakte }} {{ $property->oppervlakteEenheid == 2 ? 'Ha' : 'm²' }}</span>
                     </span>
                 @endif
             </div>

@@ -38,7 +38,10 @@
 </head>
 <body class="font-sans antialiased bg-white">
     <!-- Navigation -->
-    <nav x-data="{ mobileMenuOpen: false, searchOpen: false }" class="bg-white shadow-md sticky top-0 z-50">
+    <nav x-data="{ mobileMenuOpen: false, searchOpen: false }" 
+         x-init="$watch('mobileMenuOpen', value => document.body.style.overflow = value ? 'hidden' : '')"
+         class="bg-white shadow-md sticky top-0 z-50"
+         @toggle-mobile-menu.window="mobileMenuOpen = !mobileMenuOpen">
         <!-- Top Bar - Secondary Navigation -->
         <div class="hidden lg:block bg-primary-dark">
             <div class="max-w-[1400px] mx-auto px-4">
@@ -68,7 +71,9 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('home') }}" class="flex-shrink-0">
-                        <img src="{{ asset(\App\Models\Setting::get('site_logo_menu', 'portal/img/logo.png')) }}" alt="Elevate Real Estate" class="h-7 md:h-9">
+                        <img src="{{ asset(\App\Models\Setting::get('site_logo_menu', 'portal/img/logo.png')) }}" 
+                             alt="Elevate Real Estate" 
+                             style="max-height: {{ \App\Models\Setting::get('logo_menu_max_height', '36') }}px; width: auto;">
                     </a>
                 </div>
 
@@ -82,7 +87,7 @@
                     <button @click="searchOpen = !searchOpen" class="text-primary hover:text-primary-dark transition">
                         <i class="fas fa-search text-xl"></i>
                     </button>
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden text-primary">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen; $dispatch('toggle-mobile-menu')" class="lg:hidden text-primary">
                         <i class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
@@ -204,27 +209,32 @@
             </div>
         </div>
 
-        <!-- Mobile Menu -->
-        <div x-show="mobileMenuOpen" 
-             x-transition
-             class="lg:hidden border-t">
-            <div class="container mx-auto px-4 py-4 space-y-2">
-                <x-mobile-menu :mainMenu="$mainMenu" :topbarMenu="$topbarMenu" />
-                
-                <!-- Language Switcher - Mobile -->
-                <div class="flex gap-2 pt-3 border-t">
-                    <a href="{{ route('lang.switch', 'nl') }}" 
-                       class="flex-1 px-3 py-2 rounded text-center {{ app()->getLocale() == 'nl' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600' }} transition text-sm font-medium">
-                        Nederlands
-                    </a>
-                    <a href="{{ route('lang.switch', 'en') }}" 
-                       class="flex-1 px-3 py-2 rounded text-center {{ app()->getLocale() == 'en' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600' }} transition text-sm font-medium">
-                        English
-                    </a>
-                </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div x-data="{ open: false }" 
+         x-show="open" 
+         x-transition
+         @toggle-mobile-menu.window="open = !open"
+         @click.self="open = false; $dispatch('toggle-mobile-menu')"
+         class="lg:hidden fixed inset-0 bg-white z-40 overflow-y-auto"
+         style="padding-top: 168px;">
+        <div class="py-4 space-y-2">
+            <x-mobile-menu :mainMenu="$mainMenu" :topbarMenu="$topbarMenu" />
+            
+            <!-- Language Switcher - Mobile -->
+            <div class="flex gap-2 pt-3 border-t px-4">
+                <a href="{{ route('lang.switch', 'nl') }}" 
+                   class="flex-1 px-3 py-2 rounded text-center {{ app()->getLocale() == 'nl' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600' }} transition text-sm font-medium">
+                    Nederlands
+                </a>
+                <a href="{{ route('lang.switch', 'en') }}" 
+                   class="flex-1 px-3 py-2 rounded text-center {{ app()->getLocale() == 'en' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600' }} transition text-sm font-medium">
+                    English
+                </a>
             </div>
         </div>
-    </nav>
+    </div>
 
     <!-- Main Content -->
     <main>
@@ -237,7 +247,10 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <!-- About -->
                 <div>
-                    <img src="{{ asset(\App\Models\Setting::get('site_logo_footer', 'portal/img/logo.png')) }}" alt="Elevate" class="h-12 mb-4 brightness-0 invert">
+                    <img src="{{ asset(\App\Models\Setting::get('site_logo_footer', 'portal/img/logo.png')) }}" 
+                         alt="Elevate" 
+                         style="max-width: {{ \App\Models\Setting::get('logo_footer_max_width', '200') }}px; height: auto;" 
+                         class="mb-4 brightness-0 invert">
                     <p class="text-gray-300 text-sm mb-4">
                         {{ __('messages.footer_tagline') }}
                     </p>
