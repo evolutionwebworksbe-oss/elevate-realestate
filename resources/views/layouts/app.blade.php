@@ -6,7 +6,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ asset(\App\Models\Setting::get('site_favicon', 'favicon.ico')) }}">
+    @php
+        $faviconPath = \App\Models\Setting::get('site_favicon', 'favicon.ico');
+        if (!$faviconPath || $faviconPath === 'favicon.ico' || !file_exists(public_path($faviconPath))) {
+            $faviconPath = 'favicon-32x32.png';
+        }
+    @endphp
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset($faviconPath) }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
     {!! SEO::generate() !!}
 
@@ -292,7 +300,7 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <i class="fas fa-phone"></i>
-                            <a href="tel:+5978180018" class="hover:text-accent transition">+597 8180018</a>
+                            <a href="tel:+597404546" class="hover:text-accent transition">+597 404-546</a>
                         </li>
                         <li class="flex items-center gap-2">
                             <i class="fas fa-envelope"></i>
