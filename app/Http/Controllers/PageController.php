@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Page;
+use App\Models\Project;
 use App\Models\TeamMember;
 use Illuminate\Http\Request;
 use Artesaos\SEOTools\Facades\SEOMeta;
@@ -246,5 +248,35 @@ class PageController extends Controller
         $emailService->sendContactEmail($validated);
 
         return back()->with('success', 'Bedankt voor uw bericht. We nemen zo spoedig mogelijk contact met u op.');
+    }
+
+    public function interiorDesign()
+    {
+        SEOMeta::setTitle(__('messages.interior_design_page_title') . ' - Elevate Real Estate');
+        SEOMeta::setDescription(__('messages.interior_design_meta_description'));
+        OpenGraph::setTitle(__('messages.interior_design_page_title') . ' - Elevate Real Estate');
+
+        $projects = Project::where('is_published', true)
+            ->orderByDesc('is_featured')
+            ->orderByDesc('created_at')
+            ->limit(9)
+            ->get();
+
+        return view('pages.interior-design', compact('projects'));
+    }
+
+    public function showPage(string $slug)
+    {
+        $page = Page::where('slug', $slug)->where('is_published', true)->firstOrFail();
+
+        SEOMeta::setTitle(($page->meta_title ?: $page->getTranslatedTitle()) . ' - Elevate Real Estate');
+
+        if ($page->meta_description) {
+            SEOMeta::setDescription($page->meta_description);
+        }
+
+        OpenGraph::setTitle($page->meta_title ?: $page->getTranslatedTitle());
+
+        return view('pages.show', compact('page'));
     }
 }

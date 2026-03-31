@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Project;
 use App\Models\Property;
 use App\Models\ObjectType;
 use App\Models\District;
-use App\Models\Omgeving;  // ADD THIS LINE
+use App\Models\Omgeving;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -54,6 +55,13 @@ class HomeController extends Controller
             'happy_clients' => 500, // You can make this dynamic later
         ];
 
-        return view('home', compact('sliders', 'featuredProperties', 'recentProperties', 'objectTypes', 'districts', 'omgevingen', 'stats'));
+        $featuredProjects = Project::with('projectType')
+            ->where('is_published', true)
+            ->orderByDesc('is_featured')
+            ->orderByDesc('created_at')
+            ->limit(8)
+            ->get();
+
+        return view('home', compact('sliders', 'featuredProperties', 'recentProperties', 'objectTypes', 'districts', 'omgevingen', 'stats', 'featuredProjects'));
     }
 }

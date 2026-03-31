@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Models\Page;
 use App\Services\MenuService;
 use Illuminate\Http\Request;
 
@@ -60,8 +61,9 @@ class MenuController extends Controller
     {
         $menu->load(['items.children']);
         $availableRoutes = $this->getAvailableRoutes();
-        
-        return view('admin.menus.edit', compact('menu', 'availableRoutes'));
+        $pages = Page::where('is_published', true)->orderBy('title_nl')->get(['id', 'title_nl', 'title_en', 'slug']);
+
+        return view('admin.menus.edit', compact('menu', 'availableRoutes', 'pages'));
     }
 
     /**
@@ -102,22 +104,38 @@ class MenuController extends Controller
     public function storeItem(Request $request, Menu $menu)
     {
         $validated = $request->validate([
-            'parent_id' => 'nullable|exists:menu_items,id',
-            'title' => 'required|string|max:255',
-            'title_en' => 'nullable|string|max:255',
-            'url' => 'nullable|string|max:500',
-            'route_name' => 'nullable|string|max:255',
+            'parent_id'    => 'nullable|exists:menu_items,id',
+            'title'        => 'required|string|max:255',
+            'title_en'     => 'nullable|string|max:255',
+            'url'          => 'nullable|string|max:500',
+            'route_name'   => 'nullable|string|max:255',
             'route_params' => 'nullable|json',
-            'target' => 'required|in:_self,_blank',
-            'icon' => 'nullable|string|max:100',
-            'order' => 'required|integer',
-            'is_active' => 'boolean',
+            'page_id'      => 'nullable|exists:pages,id',
+            'target'       => 'required|in:_self,_blank',
+            'icon'         => 'nullable|string|max:100',
+            'order'        => 'required|integer',
+            'is_active'    => 'boolean',
         ]);
 
         $validated['menu_id'] = $menu->id;
-        
-        if ($validated['route_params']) {
+
+        if (!empty($validated['route_params'])) {
             $validated['route_params'] = json_decode($validated['route_params'], true);
+        }
+
+        // Clear conflicting link fields based on link_type
+        $linkType = $request->input('link_type');
+        if ($linkType === 'page') {
+            $validated['url'] = null;
+            $validated['route_name'] = null;
+            $validated['route_params'] = null;
+        } elseif ($linkType === 'route') {
+            $validated['url'] = null;
+            $validated['page_id'] = null;
+        } else {
+            $validated['route_name'] = null;
+            $validated['route_params'] = null;
+            $validated['page_id'] = null;
         }
 
         MenuItem::create($validated);
@@ -134,20 +152,35 @@ class MenuController extends Controller
     public function updateItem(Request $request, Menu $menu, MenuItem $item)
     {
         $validated = $request->validate([
-            'parent_id' => 'nullable|exists:menu_items,id',
-            'title' => 'required|string|max:255',
-            'title_en' => 'nullable|string|max:255',
-            'url' => 'nullable|string|max:500',
-            'route_name' => 'nullable|string|max:255',
+            'parent_id'    => 'nullable|exists:menu_items,id',
+            'title'        => 'required|string|max:255',
+            'title_en'     => 'nullable|string|max:255',
+            'url'          => 'nullable|string|max:500',
+            'route_name'   => 'nullable|string|max:255',
             'route_params' => 'nullable|json',
-            'target' => 'required|in:_self,_blank',
-            'icon' => 'nullable|string|max:100',
-            'order' => 'required|integer',
-            'is_active' => 'boolean',
+            'page_id'      => 'nullable|exists:pages,id',
+            'target'       => 'required|in:_self,_blank',
+            'icon'         => 'nullable|string|max:100',
+            'order'        => 'required|integer',
+            'is_active'    => 'boolean',
         ]);
 
-        if ($validated['route_params']) {
+        if (!empty($validated['route_params'])) {
             $validated['route_params'] = json_decode($validated['route_params'], true);
+        }
+
+        $linkType = $request->input('link_type');
+        if ($linkType === 'page') {
+            $validated['url'] = null;
+            $validated['route_name'] = null;
+            $validated['route_params'] = null;
+        } elseif ($linkType === 'route') {
+            $validated['url'] = null;
+            $validated['page_id'] = null;
+        } else {
+            $validated['route_name'] = null;
+            $validated['route_params'] = null;
+            $validated['page_id'] = null;
         }
 
         $item->update($validated);

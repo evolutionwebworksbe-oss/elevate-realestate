@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('objecten', function (Blueprint $table) {
-            $table->string('address')->nullable()->after('omgeving_id');
-        });
+        if (!Schema::hasColumn('objecten', 'address')) {
+            Schema::table('objecten', function (Blueprint $table) {
+                $table->string('address')->nullable()->after('omgeving_id');
+            });
+        }
     }
 
     public function down(): void

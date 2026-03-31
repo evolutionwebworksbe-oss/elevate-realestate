@@ -11,9 +11,10 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $imageSettings = Setting::where('group', 'images')->get();
+        $imageSettings    = Setting::where('group', 'images')->get();
         $watermarkSettings = Setting::where('group', 'watermark')->get();
-        $brandingSettings = Setting::where('group', 'branding')->get();
+        $brandingSettings  = Setting::where('group', 'branding')->get();
+        $homepageSettings  = Setting::where('group', 'homepage')->pluck('value', 'key')->toArray();
         
         // Get current watermark image
         $watermarkPath = Setting::get('watermark_path', 'images/watermark.png');
@@ -34,6 +35,7 @@ class SettingsController extends Controller
             'imageSettings',
             'watermarkSettings',
             'brandingSettings',
+            'homepageSettings',
             'watermarkUrl',
             'watermarkExists',
             'logoMenuUrl',
@@ -94,7 +96,9 @@ class SettingsController extends Controller
                 'logo_footer_max_height' => 'required|integer|min:20|max:200',
                 'logo_menu_file' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:5120',
                 'logo_footer_file' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:5120',
-                'favicon_file' => 'nullable|file|mimes:png,ico|max:1024'
+                'favicon_file' => 'nullable|file|mimes:png,ico|max:1024',
+                // Homepage
+                'homepage_show_projects' => 'nullable|boolean',
             ]);
             
             \Log::info('Validation passed', $validated);
@@ -106,13 +110,15 @@ class SettingsController extends Controller
                 }
                 
                 // Determine type and group
-                if (in_array($key, ['image_optimization_enabled', 'watermark_enabled'])) {
+                if (in_array($key, ['image_optimization_enabled', 'watermark_enabled', 'homepage_show_projects'])) {
                     $type = 'boolean';
                 } else {
                     $type = 'number';
                 }
-                
-                if (str_starts_with($key, 'watermark_')) {
+
+                if (str_starts_with($key, 'homepage_')) {
+                    $group = 'homepage';
+                } elseif (str_starts_with($key, 'watermark_')) {
                     $group = 'watermark';
                 } elseif (str_starts_with($key, 'logo_') || str_starts_with($key, 'favicon_')) {
                     $group = 'branding';

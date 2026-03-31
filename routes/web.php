@@ -15,6 +15,9 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Admin\NewsletterController;
 use App\Http\Controllers\Admin\MenuController;
+use App\Http\Controllers\Admin\PageController as AdminPageController;
+use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\ProjectTypeController;
 use Illuminate\Support\Facades\Route;
 use App\Models\Property;
 use App\Models\TeamMember;
@@ -64,12 +67,26 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/settings/watermark', [\App\Http\Controllers\Admin\SettingsController::class, 'deleteWatermark'])->name('settings.watermark.delete');
     Route::post('/settings/watermark/test', [\App\Http\Controllers\Admin\SettingsController::class, 'testWatermark'])->name('settings.watermark.test');
     
+    // Pages (CMS)
+    Route::resource('pages', AdminPageController::class)->names('pages');
+
+    // Projects
+    Route::resource('projects', ProjectController::class)->names('projects');
+    Route::post('projects/{project}/upload-gallery', [ProjectController::class, 'uploadGallery'])->name('projects.upload-gallery');
+    Route::delete('projects/{project}/images/{image}', [ProjectController::class, 'deleteImage'])->name('projects.delete-image');
+    Route::post('projects/{project}/reorder-images', [ProjectController::class, 'reorderImages'])->name('projects.reorder-images');
+    Route::post('projects/{project}/videos', [ProjectController::class, 'storeVideo'])->name('projects.videos.store');
+    Route::delete('projects/{project}/videos/{video}', [ProjectController::class, 'destroyVideo'])->name('projects.videos.destroy');
+    Route::post('projects/{project}/downloads', [ProjectController::class, 'storeDownload'])->name('projects.downloads.store');
+    Route::delete('projects/{project}/downloads/{download}', [ProjectController::class, 'destroyDownload'])->name('projects.downloads.destroy');
+
     // Category Order Routes
     Route::get('/settings/category-order', [\App\Http\Controllers\Admin\SettingsController::class, 'categoryOrder'])->name('settings.category-order');
     Route::post('/settings/category-order', [\App\Http\Controllers\Admin\SettingsController::class, 'updateCategoryOrder'])->name('settings.category-order.update');
 });
 
 Route::prefix('settings')->name('admin.settings.')->group(function () {
+    Route::resource('project-types', ProjectTypeController::class);
     Route::resource('currencies', CurrencyController::class);
     Route::resource('districts', DistrictController::class);
     Route::resource('omgevingen', OmgevingController::class);
@@ -124,6 +141,12 @@ Route::get('/zoeken', [App\Http\Controllers\PropertyController::class, 'search']
 // Live Search API
 Route::get('/api/properties/live-search', [App\Http\Controllers\PropertyController::class, 'liveSearch'])->name('properties.live-search');
 
+// Projects (public)
+Route::get('/projecten', [App\Http\Controllers\ProjectController::class, 'index'])->name('projects.index');
+Route::get('/projecten/{slug}', [App\Http\Controllers\ProjectController::class, 'show'])->name('projects.show');
+
+Route::get('/interior-design', [App\Http\Controllers\PageController::class, 'interiorDesign'])->name('interior-design');
+
 Route::get('/over-ons', [App\Http\Controllers\PageController::class, 'about'])->name('about');
 Route::get('/makelaars', [App\Http\Controllers\PageController::class, 'agents'])->name('agents');
 Route::get('/contact', [App\Http\Controllers\PageController::class, 'contact'])->name('contact');
@@ -133,3 +156,8 @@ Route::get('/zelf-adverteren', [App\Http\Controllers\PageController::class, 'adv
 Route::post('/newsletter/subscribe', [App\Http\Controllers\PageController::class, 'newsletterSubscribe'])->name('newsletter.subscribe');
 
 require __DIR__.'/auth.php';
+
+// CMS Pages — catch-all (must be last)
+Route::get('/{slug}', [App\Http\Controllers\PageController::class, 'showPage'])
+    ->name('page.show')
+    ->where('slug', '[a-zA-Z0-9\-]+');

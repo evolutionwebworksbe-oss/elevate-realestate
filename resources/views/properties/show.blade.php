@@ -283,12 +283,14 @@
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                     <div class="text-sm text-gray-500">
                     </div>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination={{ $property->latitude ?? '5.8520' }},{{ $property->longitude ?? '-55.2038' }}" 
+                    @if($property->directions)
+                    <a href="{{ $property->directions }}" 
                     target="_blank"
                     class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm">
                         <i class="fas fa-directions"></i>
                         <span>{{ __('messages.get_directions') }}</span>
                     </a>
+                    @endif
                 </div>
 
                 <!-- Property Details Grid -->

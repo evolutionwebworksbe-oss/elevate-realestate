@@ -90,11 +90,15 @@
                     <div class="flex gap-4 mb-2">
                         <label class="inline-flex items-center">
                             <input type="radio" name="link_type" value="route" checked onchange="toggleLinkType('route')" class="mr-2">
-                            <span>Route Name</span>
+                            <span>Route</span>
                         </label>
                         <label class="inline-flex items-center">
                             <input type="radio" name="link_type" value="url" onchange="toggleLinkType('url')" class="mr-2">
                             <span>Custom URL</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="link_type" value="page" onchange="toggleLinkType('page')" class="mr-2">
+                            <span>Page</span>
                         </label>
                     </div>
 
@@ -111,6 +115,18 @@
                     <div id="urlField" class="hidden">
                         <input type="text" name="url" id="itemUrl" placeholder="https://example.com" class="w-full px-3 py-2 border border-gray-300 rounded-md">
                         <p class="text-xs text-gray-500 mt-1">Enter full URL including https://</p>
+                    </div>
+
+                    <div id="pageField" class="hidden">
+                        <select name="page_id" id="itemPage" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Select Page</option>
+                            @foreach($pages as $p)
+                                <option value="{{ $p->id }}" data-slug="{{ $p->slug }}">
+                                    {{ $p->title_nl }}{{ $p->title_en ? ' / ' . $p->title_en : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Link to a CMS page — URL: <span id="pageSlugPreview" class="font-mono">/</span></p>
                     </div>
                 </div>
 
@@ -166,19 +182,35 @@
         function toggleLinkType(type) {
             const routeField = document.getElementById('routeField');
             const urlField = document.getElementById('urlField');
+            const pageField = document.getElementById('pageField');
             const routeInput = document.getElementById('itemRoute');
             const urlInput = document.getElementById('itemUrl');
+            const pageInput = document.getElementById('itemPage');
+
+            routeField.classList.add('hidden');
+            urlField.classList.add('hidden');
+            pageField.classList.add('hidden');
 
             if (type === 'route') {
                 routeField.classList.remove('hidden');
-                urlField.classList.add('hidden');
                 urlInput.value = '';
-            } else {
-                routeField.classList.add('hidden');
+                pageInput.value = '';
+            } else if (type === 'url') {
                 urlField.classList.remove('hidden');
                 routeInput.value = '';
+                pageInput.value = '';
+            } else {
+                pageField.classList.remove('hidden');
+                routeInput.value = '';
+                urlInput.value = '';
             }
         }
+
+        document.getElementById('itemPage').addEventListener('change', function () {
+            const option = this.options[this.selectedIndex];
+            const slug = option.dataset.slug || '';
+            document.getElementById('pageSlugPreview').textContent = slug ? '/' + slug : '/';
+        });
 
         function openAddItemModal() {
             document.getElementById('modalTitle').textContent = 'Add Menu Item';
@@ -206,7 +238,12 @@
                     document.getElementById('itemActive').checked = data.is_active;
                     document.getElementById('itemRouteParams').value = data.route_params ? JSON.stringify(data.route_params) : '';
 
-                    if (data.url) {
+                    if (data.page_id) {
+                        document.querySelector('input[name="link_type"][value="page"]').checked = true;
+                        toggleLinkType('page');
+                        document.getElementById('itemPage').value = data.page_id;
+                        document.getElementById('itemPage').dispatchEvent(new Event('change'));
+                    } else if (data.url) {
                         document.querySelector('input[name="link_type"][value="url"]').checked = true;
                         toggleLinkType('url');
                         document.getElementById('itemUrl').value = data.url;

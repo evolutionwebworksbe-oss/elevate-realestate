@@ -90,9 +90,27 @@
                             </a>
                         </li>
                     @endif
+                    <!-- Projects -->
+                    <li>
+                        <a href="{{ route('admin.projects.index') }}"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.projects.*') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-diagram-project w-5 text-center"></i>
+                            <span x-show="sidebarOpen" class="sidebar-transition">Projects</span>
+                        </a>
+                    </li>
+
+                    <!-- Pages -->
+                    <li>
+                        <a href="{{ route('admin.pages.index') }}"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.pages.*') ? 'bg-gray-700' : '' }}">
+                            <i class="fas fa-file-alt w-5 text-center"></i>
+                            <span x-show="sidebarOpen" class="sidebar-transition">Pages</span>
+                        </a>
+                    </li>
+
                     <!-- Menus -->
                     <li>
-                        <a href="{{ route('admin.menus.index') }}" 
+                        <a href="{{ route('admin.menus.index') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors {{ request()->routeIs('admin.menus.*') ? 'bg-gray-700' : '' }}">
                             <i class="fas fa-bars w-5 text-center"></i>
                             <span x-show="sidebarOpen" class="sidebar-transition">Menus</span>
@@ -168,10 +186,17 @@
                                 </a>
                             </li>
                             <li>
-                                <a href="{{ route('admin.settings.team-titletypes.index') }}" 
+                                <a href="{{ route('admin.settings.team-titletypes.index') }}"
                                 class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 text-sm {{ request()->routeIs('admin.settings.team-titletypes.*') ? 'bg-gray-700' : '' }}">
                                     <i class="fas fa-user-tag w-4 text-center"></i>
                                     <span>Team Titles</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('admin.settings.project-types.index') }}"
+                                class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 text-sm {{ request()->routeIs('admin.settings.project-types.*') ? 'bg-gray-700' : '' }}">
+                                    <i class="fas fa-tags w-4 text-center"></i>
+                                    <span>Project Types</span>
                                 </a>
                             </li>
                         </ul>

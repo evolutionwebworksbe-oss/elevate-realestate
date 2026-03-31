@@ -19,6 +19,7 @@ class MenuItem extends Model
         'route_params',
         'target',
         'icon',
+        'page_id',
         'order',
         'is_active',
     ];
@@ -61,7 +62,15 @@ class MenuItem extends Model
     }
 
     /**
-     * Get the full URL for this menu item
+     * Get the page linked to this menu item.
+     */
+    public function page()
+    {
+        return $this->belongsTo(\App\Models\Page::class);
+    }
+
+    /**
+     * Get the full URL for this menu item.
      */
     public function getUrlAttribute($value)
     {
@@ -72,6 +81,13 @@ class MenuItem extends Model
         if ($this->route_name) {
             $params = $this->route_params ?? [];
             return route($this->route_name, $params);
+        }
+
+        if ($this->page_id) {
+            $page = $this->relationLoaded('page') ? $this->page : \App\Models\Page::find($this->page_id);
+            if ($page) {
+                return route('page.show', $page->slug);
+            }
         }
 
         return '#';
