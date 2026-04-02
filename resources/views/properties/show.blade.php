@@ -126,9 +126,13 @@
              x-transition:enter-end="opacity-100"
              class="absolute inset-0 flex items-center justify-center cursor-pointer"
              @click="openImageModal('{{ asset('portal' . $imageUrl) }}', {{ $index }})">
-            <img src="{{ asset('portal' . $imageUrl) }}" 
-                 alt="{{ $propertyName }}"
-                 class="w-full h-full object-contain">
+            <x-responsive-image
+                :path="'portal' . $imageUrl"
+                :alt="$propertyName"
+                sizes="100vw"
+                class="w-full h-full object-contain"
+                loading="eager"
+            />
         </div>
         @endforeach
 

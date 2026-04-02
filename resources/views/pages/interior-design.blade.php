@@ -95,9 +95,12 @@
                            class="group block bg-gray-800 rounded-2xl overflow-hidden hover:ring-2 hover:ring-accent transition-all">
                             <div class="relative h-52 bg-gray-700 overflow-hidden">
                                 @if($project->featured_image)
-                                    <img src="{{ asset('portal/projects/' . $project->featured_image) }}"
-                                         alt="{{ $project->getTranslatedTitle() }}"
-                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                    <x-responsive-image
+                                        :path="'portal/projects/' . $project->featured_image"
+                                        :alt="$project->getTranslatedTitle()"
+                                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
                                 @else
                                     <div class="w-full h-full flex items-center justify-center text-gray-600">
                                         <i class="fas fa-couch text-5xl"></i>
@@ -233,7 +236,7 @@
                                 <p class="text-gray-500 text-sm leading-relaxed">{{ $step['desc'] }}</p>
                             </div>
                             <div class="shrink-0">
-                                <span class="inline-block text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap {{ $costColors[$step['cost_color']] }}">
+                                <span class="inline-block max-w-full text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-normal break-words sm:whitespace-nowrap {{ $costColors[$step['cost_color']] }}">
                                     {{ $step['cost'] }}
                                 </span>
                             </div>

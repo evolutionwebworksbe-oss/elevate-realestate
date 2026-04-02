@@ -19,6 +19,8 @@ class Property extends Model
         'district_id',
         'omgeving_id',
         'address',
+        'latitude',
+        'longitude',
         'objectType_id',
         'objectSubType_id',
         'status',

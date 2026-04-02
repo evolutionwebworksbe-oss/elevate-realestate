@@ -4,8 +4,13 @@
     <!-- Hero -->
     <div class="relative bg-gray-900 text-white">
         @if($project->featured_image)
-            <img src="{{ asset('portal/projects/' . $project->featured_image) }}"
-                 class="absolute inset-0 w-full h-full object-cover opacity-40" alt="{{ $project->getTranslatedTitle() }}">
+            <x-responsive-image
+                :path="'portal/projects/' . $project->featured_image"
+                :alt="$project->getTranslatedTitle()"
+                sizes="100vw"
+                class="absolute inset-0 w-full h-full object-cover opacity-40"
+                loading="eager"
+            />
         @endif
         <div class="relative container mx-auto px-4 py-24 max-w-5xl">
             <div class="flex flex-wrap items-center gap-3 mb-4">
@@ -52,9 +57,12 @@
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             @foreach($project->images as $image)
                             <a href="{{ asset('portal/projects/gallery/' . $image->path) }}" target="_blank">
-                                <img src="{{ asset('portal/projects/gallery/' . $image->path) }}"
-                                     alt="{{ $image->alt_text ?: $project->getTranslatedTitle() }}"
-                                     class="w-full h-40 object-cover rounded-lg hover:opacity-90 transition">
+                                <x-responsive-image
+                                    :path="'portal/projects/gallery/' . $image->path"
+                                    :alt="$image->alt_text ?: $project->getTranslatedTitle()"
+                                    sizes="(min-width: 640px) 33vw, 50vw"
+                                    class="w-full h-40 object-cover rounded-lg hover:opacity-90 transition"
+                                />
                             </a>
                             @endforeach
                         </div>

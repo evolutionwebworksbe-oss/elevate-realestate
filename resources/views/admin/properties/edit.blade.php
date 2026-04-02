@@ -68,6 +68,15 @@
                                 <p class="text-xs text-gray-500 mt-1">JPG, PNG of GIF (max 5MB)</p>
                                 <p class="text-xs text-blue-500 mt-2">Foto wordt automatisch geüpload na selectie</p>
                             </div>
+                            <div id="featuredUploadProgressPanel" class="hidden mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                                <div class="flex items-center justify-between gap-4 text-sm mb-2">
+                                    <p class="font-medium text-blue-900" id="featuredUploadProgressText">Voorbereiden...</p>
+                                    <p class="text-blue-700" id="featuredUploadProgressPercent">0%</p>
+                                </div>
+                                <div class="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                                    <div id="featuredUploadProgressBar" class="h-full w-0 bg-blue-600 transition-all duration-200"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -101,6 +110,16 @@
                                 <p class="text-xs text-gray-500 mt-1">U kunt meerdere bestanden tegelijk selecteren</p>
                                 <p class="text-xs text-blue-500 mt-2">Foto's worden automatisch geüpload na selectie</p>
                             </div>
+                        </div>
+                        <div id="galleryUploadProgressPanel" class="hidden mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                            <div class="flex items-center justify-between gap-4 text-sm mb-2">
+                                <p class="font-medium text-blue-900" id="galleryUploadProgressText">Voorbereiden upload...</p>
+                                <p class="text-blue-700" id="galleryUploadProgressCount">0 / 0</p>
+                            </div>
+                            <div class="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                                <div id="galleryUploadProgressBar" class="h-full w-0 bg-blue-600 transition-all duration-200"></div>
+                            </div>
+                            <div id="galleryUploadFileList" class="mt-3 space-y-1 text-xs text-blue-900 max-h-40 overflow-y-auto"></div>
                         </div>
                     </div>
 
@@ -368,6 +387,40 @@
                                        value="{{ old('directions', $property->directions) }}"
                                        placeholder="https://maps.google.com/..."
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label for="latitude" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Latitude
+                                </label>
+                                <input type="number"
+                                       name="latitude"
+                                       id="latitude"
+                                       step="0.0000001"
+                                       value="{{ old('latitude', $property->latitude) }}"
+                                       placeholder="5.8520000"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <p class="mt-1 text-xs text-gray-500">Gebruik decimale coordinaten voor de kaartmarker.</p>
+                                @error('latitude')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="longitude" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Longitude
+                                </label>
+                                <input type="number"
+                                       name="longitude"
+                                       id="longitude"
+                                       step="0.0000001"
+                                       value="{{ old('longitude', $property->longitude) }}"
+                                       placeholder="-55.2038000"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <p class="mt-1 text-xs text-gray-500">Laat leeg om de standaardkaartlocatie te gebruiken.</p>
+                                @error('longitude')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -870,111 +923,230 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Auto-upload featured image when selected
-    document.getElementById('featuredImageInput').addEventListener('change', function(e) {
-        if (e.target.files && e.target.files[0]) {
+    const featuredInput = document.getElementById('featuredImageInput');
+    const featuredPreview = document.getElementById('featuredImagePreview');
+    const featuredProgressPanel = document.getElementById('featuredUploadProgressPanel');
+    const featuredProgressText = document.getElementById('featuredUploadProgressText');
+    const featuredProgressPercent = document.getElementById('featuredUploadProgressPercent');
+    const featuredProgressBar = document.getElementById('featuredUploadProgressBar');
+    const galleryInput = document.getElementById('galleryImagesInput');
+    const galleryProgressPanel = document.getElementById('galleryUploadProgressPanel');
+    const galleryProgressText = document.getElementById('galleryUploadProgressText');
+    const galleryProgressCount = document.getElementById('galleryUploadProgressCount');
+    const galleryProgressBar = document.getElementById('galleryUploadProgressBar');
+    const galleryFileList = document.getElementById('galleryUploadFileList');
+    const { compressImageFile, readFileAsDataUrl } = window.ImageUploadUtils;
+
+    function uploadWithProgress(url, fieldName, file, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
             const formData = new FormData();
-            formData.append('featuredImage', e.target.files[0]);
+            formData.append(fieldName, file);
             formData.append('_token', '{{ csrf_token() }}');
-            
-            // Show preview immediately
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                document.getElementById('featuredImagePreview').style.backgroundImage = `url('${event.target.result}')`;
-            }
-            reader.readAsDataURL(e.target.files[0]);
-            
-            // Upload to server
-            fetch('{{ route("admin.properties.upload-featured", $property) }}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+
+            xhr.open('POST', url, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.upload.addEventListener('progress', event => {
+                if (!event.lengthComputable) {
+                    return;
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                } else {
-                    showNotification('Upload mislukt', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Upload mislukt', 'error');
+                onProgress(Math.round((event.loaded / event.total) * 100));
             });
+
+            xhr.onload = () => {
+                let data = {};
+
+                try {
+                    data = JSON.parse(xhr.responseText || '{}');
+                } catch (error) {
+                    reject(new Error('Ongeldige server response'));
+                    return;
+                }
+
+                if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                    resolve(data);
+                    return;
+                }
+
+                reject(new Error(data.message || 'Upload mislukt'));
+            };
+
+            xhr.onerror = () => reject(new Error('Netwerkfout tijdens upload'));
+            xhr.send(formData);
+        });
+    }
+
+    function appendGalleryImage(image) {
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'relative group cursor-move';
+        imageDiv.dataset.imageId = image.id;
+        imageDiv.innerHTML = `
+            <div class="aspect-square bg-cover bg-center rounded-lg" style="background-image: url('${image.url}')">
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
+                    <i class="fas fa-grip-vertical text-white opacity-0 group-hover:opacity-100 text-2xl"></i>
+                </div>
+            </div>
+            <form action="{{ url('admin/properties') }}/{{ $property->id }}/images/${image.id}"
+                method="POST"
+                class="absolute top-2 right-2"
+                onsubmit="return confirm('Weet u zeker dat u deze foto wilt verwijderen?')">
+                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="_method" value="DELETE">
+                <button type="submit"
+                        class="bg-red-500 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </form>
+        `;
+        galleryGrid.appendChild(imageDiv);
+
+        const emptyMessage = galleryGrid.querySelector('.col-span-full');
+        if (emptyMessage) {
+            emptyMessage.remove();
+        }
+    }
+
+    function appendGalleryFileStatus(name, statusClass, message) {
+        const row = document.createElement('div');
+        row.className = statusClass;
+        row.textContent = `${name}: ${message}`;
+        galleryFileList.appendChild(row);
+        galleryFileList.scrollTop = galleryFileList.scrollHeight;
+    }
+
+    function normalizeUploadErrorMessage(message) {
+        if (!message) {
+            return 'Onbekende fout tijdens upload';
+        }
+
+        if (message.includes('validation.image')) {
+            return 'Bestand is geen geldige afbeelding';
+        }
+
+        if (message.includes('validation.max')) {
+            return 'Bestand is te groot';
+        }
+
+        return message;
+    }
+
+    featuredInput.addEventListener('change', async function(e) {
+        if (!(e.target.files && e.target.files[0])) {
+            return;
+        }
+
+        const originalFile = e.target.files[0];
+
+        try {
+            featuredProgressPanel.classList.remove('hidden');
+            featuredProgressText.textContent = 'Afbeelding comprimeren...';
+            featuredProgressPercent.textContent = '0%';
+            featuredProgressBar.style.width = '0%';
+
+            const compressedFile = await compressImageFile(originalFile, { maxWidth: 1920, maxHeight: 1080, quality: 0.82 });
+            const previewUrl = await readFileAsDataUrl(compressedFile);
+            featuredPreview.style.backgroundImage = `url('${previewUrl}')`;
+
+            featuredProgressText.textContent = compressedFile.size < originalFile.size
+                ? 'Gecomprimeerd, upload starten...'
+                : 'Upload starten...';
+
+            const data = await uploadWithProgress(
+                '{{ route("admin.properties.upload-featured", $property) }}',
+                'featuredImage',
+                compressedFile,
+                percent => {
+                    featuredProgressText.textContent = `Uitgelichte foto uploaden (${percent}%)`;
+                    featuredProgressPercent.textContent = `${percent}%`;
+                    featuredProgressBar.style.width = `${percent}%`;
+                }
+            );
+
+            featuredProgressText.textContent = 'Upload voltooid';
+            featuredProgressPercent.textContent = '100%';
+            featuredProgressBar.style.width = '100%';
+            showNotification(data.message, 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            const errorMessage = normalizeUploadErrorMessage(error.message);
+            featuredProgressText.textContent = errorMessage;
+            showNotification(errorMessage, 'error');
+        } finally {
+            e.target.value = '';
         }
     });
 
-    // Auto-upload gallery images when selected
-    document.getElementById('galleryImagesInput').addEventListener('change', function(e) {
-        if (e.target.files && e.target.files.length > 0) {
-            const formData = new FormData();
-            
-            for (let i = 0; i < e.target.files.length; i++) {
-                formData.append('images[]', e.target.files[i]);
-            }
-            formData.append('_token', '{{ csrf_token() }}');
-            
-            showNotification(`Uploading ${e.target.files.length} foto(s)...`, 'info');
-            
-            fetch('{{ route("admin.properties.upload-gallery", $property) }}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+    galleryInput.addEventListener('change', async function(e) {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) {
+            return;
+        }
+
+        galleryProgressPanel.classList.remove('hidden');
+        galleryProgressText.textContent = 'Voorbereiden upload...';
+        galleryProgressCount.textContent = `0 / ${files.length}`;
+        galleryProgressBar.style.width = '0%';
+        galleryFileList.innerHTML = '';
+        galleryInput.disabled = true;
+
+        let successCount = 0;
+        const failedFiles = [];
+
+        for (let index = 0; index < files.length; index++) {
+            const originalFile = files[index];
+
+            try {
+                galleryProgressText.textContent = `${originalFile.name} comprimeren...`;
+                const compressedFile = await compressImageFile(originalFile, { maxWidth: 1920, maxHeight: 1080, quality: 0.82 });
+
+                if (compressedFile.size < originalFile.size) {
+                    appendGalleryFileStatus(originalFile.name, 'text-blue-700', 'Gecomprimeerd');
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                    
-                    // Add uploaded images to gallery grid
-                    const grid = document.getElementById('galleryImagesGrid');
-                    
-                    // Remove "no images" message if exists
-                    const emptyMessage = grid.querySelector('.col-span-full');
-                    if (emptyMessage) emptyMessage.remove();
-                    
-                    data.images.forEach(image => {
-                        const imageDiv = document.createElement('div');
-                        imageDiv.className = 'relative group';
-                        
-                        // Extract just the path from the full URL and add portal prefix
-                        const imageUrl = image.url.replace(window.location.origin, '');
-                        const portalUrl = `${window.location.origin}/portal${imageUrl}`;
-                        
-                        imageDiv.innerHTML = `
-                            <div class="aspect-square bg-cover bg-center rounded-lg" 
-                                style="background-image: url('${portalUrl}')">
-                            </div>
-                            <form action="{{ url('admin/properties') }}/{{ $property->id }}/images/${image.id}" 
-                                method="POST" 
-                                class="absolute top-2 right-2 delete-form"
-                                onsubmit="return confirm('Weet u zeker dat u deze foto wilt verwijderen?')">
-                                <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" 
-                                        class="bg-red-500 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </form>
-                        `;
-                        grid.appendChild(imageDiv);
-                    });
-                    
-                    // Clear file input
-                    e.target.value = '';
-                } else {
-                    showNotification('Upload mislukt', 'error');
+
+                const data = await uploadWithProgress(
+                    '{{ route("admin.properties.upload-gallery", $property) }}',
+                    'image',
+                    compressedFile,
+                    percent => {
+                        const overall = Math.round((((index) + (percent / 100)) / files.length) * 100);
+                        galleryProgressText.textContent = `${originalFile.name} uploaden (${percent}%)`;
+                        galleryProgressCount.textContent = `${index + 1} / ${files.length}`;
+                        galleryProgressBar.style.width = `${overall}%`;
+                    }
+                );
+
+                const image = Array.isArray(data.images) ? data.images[0] : null;
+                if (image) {
+                    appendGalleryImage(image);
                 }
-            })
-            .catch(error => {
+
+                appendGalleryFileStatus(originalFile.name, 'text-green-700', 'Geüpload');
+                successCount++;
+            } catch (error) {
                 console.error('Error:', error);
-                showNotification('Upload mislukt', 'error');
-            });
+                const errorMessage = normalizeUploadErrorMessage(error.message);
+                appendGalleryFileStatus(originalFile.name, 'text-red-700', errorMessage);
+                failedFiles.push({ name: originalFile.name, message: errorMessage });
+            }
+        }
+
+        galleryProgressText.textContent = successCount === files.length
+            ? 'Alle uploads voltooid'
+            : `${successCount} gelukt, ${failedFiles.length} mislukt. Alleen de rode bestanden zijn niet geüpload.`;
+        galleryProgressCount.textContent = `${files.length} / ${files.length}`;
+        galleryProgressBar.style.width = '100%';
+        galleryInput.disabled = false;
+        galleryInput.value = '';
+
+        if (failedFiles.length === 0) {
+            showNotification(`${successCount} foto(s) succesvol geüpload`, 'success');
+        } else {
+            showNotification(
+                `${successCount} van ${files.length} foto(s) geüpload. ${failedFiles.length} mislukt, zie de rode regels voor details.`,
+                'info'
+            );
         }
     });
     

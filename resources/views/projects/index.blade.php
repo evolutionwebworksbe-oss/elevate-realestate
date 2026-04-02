@@ -39,9 +39,12 @@
                        class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
                         <div class="relative h-52 bg-gray-100 overflow-hidden">
                             @if($project->featured_image)
-                                <img src="{{ asset('portal/projects/' . $project->featured_image) }}"
-                                     alt="{{ $project->getTranslatedTitle() }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                <x-responsive-image
+                                    :path="'portal/projects/' . $project->featured_image"
+                                    :alt="$project->getTranslatedTitle()"
+                                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-gray-300">
                                     <i class="fas fa-building text-5xl"></i>

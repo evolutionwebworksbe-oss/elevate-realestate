@@ -395,9 +395,9 @@ class SettingsController extends Controller
             $fullPath = public_path('images/tests/' . $filename);
             
             // Always apply watermark for test (force true)
-            $maxWidth = (int)Setting::get('image_max_width', 1920);
-            $maxHeight = (int)Setting::get('image_max_height', 1080);
-            $quality = (int)Setting::get('image_quality', 85);
+            $maxWidth = (int)Setting::get('image_max_width', 2560);
+            $maxHeight = (int)Setting::get('image_max_height', 1600);
+            $quality = (int)Setting::get('image_quality', 82);
             
             \Log::info('Testing watermark with settings:', [
                 'watermark_enabled' => Setting::get('watermark_enabled'),

@@ -142,6 +142,8 @@ class PropertyController extends Controller
             'district_id' => 'required|exists:districten,id',
             'omgeving_id' => 'nullable|exists:omgevingen,id',
             'address' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'objectSubType_id' => 'required|exists:objectSubTypes,id',
             'status' => 'required|in:1,2,3',
             'titel_id' => 'nullable|exists:titels,id',
@@ -268,6 +270,8 @@ class PropertyController extends Controller
             'district_id' => 'required|exists:districten,id',
             'omgeving_id' => 'nullable|exists:omgevingen,id',
             'address' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'objectSubType_id' => 'required|exists:objectSubTypes,id',
             'status' => 'required|in:1,2,3',
             'titel_id' => 'nullable|exists:titels,id',
@@ -347,15 +351,15 @@ class PropertyController extends Controller
         DB::beginTransaction();
         try {
             // Delete featured image
-            if ($property->featuredFoto && file_exists(public_path('portal' . $property->featuredFoto))) {
-                unlink(public_path('portal' . $property->featuredFoto));
+            if ($property->featuredFoto) {
+                $imageService = app(ImageService::class);
+                $imageService->deleteImageWithVariants(public_path('portal' . $property->featuredFoto));
             }
             
             // Delete all gallery images
             foreach ($property->images as $image) {
-                if (file_exists(public_path('portal' . $image->url))) {
-                    unlink(public_path('portal' . $image->url));
-                }
+                $imageService = app(ImageService::class);
+                $imageService->deleteImageWithVariants(public_path('portal' . $image->url));
                 $image->delete();
             }
             
@@ -376,37 +380,30 @@ class PropertyController extends Controller
     public function uploadFeatured(Request $request, Property $property, ImageService $imageService)
 {
     $request->validate([
-        'featuredImage' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120'
+        'featuredImage' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120'
     ]);
 
     if ($request->hasFile('featuredImage')) {
-        // Delete old featured image if exists
-        if ($property->featuredFoto && file_exists(public_path('portal' . $property->featuredFoto))) {
-            unlink(public_path('portal' . $property->featuredFoto));
-        }
-        
+        $oldFeaturedPath = $property->featuredFoto ? public_path('portal' . $property->featuredFoto) : null;
         $file = $request->file('featuredImage');
-        $originalName = $file->getClientOriginalName();
-        $sanitizedName = preg_replace('/\s+/', '_', $originalName);
-        $filename = time() . '_' . $sanitizedName;
-        
-        $uploadPath = public_path('portal/uploads/featured');
-        if (!file_exists($uploadPath)) {
-            mkdir($uploadPath, 0755, true);
+        $stored = $imageService->storeOptimizedUpload($file, 'portal/uploads/featured');
+        $path = '/uploads/featured/' . $stored['filename'];
+
+        try {
+            $property->update(['featuredFoto' => $path]);
+
+            if ($oldFeaturedPath) {
+                $imageService->deleteImageWithVariants($oldFeaturedPath);
+            }
+        } catch (\Throwable $e) {
+            $imageService->deleteImageWithVariants(public_path('portal' . $path));
+            throw $e;
         }
-        
-        $file->move($uploadPath, $filename);
-        $path = '/uploads/featured/' . $filename;
-        
-        // Process image: optimize and add watermark if enabled
-        $result = $imageService->processPropertyImage('portal' . $path, $property, null);
-        
-        $property->update(['featuredFoto' => $path]);
         
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'url' => asset($path),
+                'url' => asset('portal' . $path),
                 'message' => 'Uitgelichte foto succesvol geüpload en geoptimaliseerd'
             ]);
         }
@@ -420,7 +417,7 @@ class PropertyController extends Controller
     public function uploadGallery(Request $request, Property $property, ImageService $imageService)
 {
     try {
-        if (!$request->hasFile('images')) {
+        if (!$request->hasFile('images') && !$request->hasFile('image')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Geen bestanden geselecteerd'
@@ -428,9 +425,20 @@ class PropertyController extends Controller
         }
 
         $request->validate([
-            'images' => 'required|array|max:10',
-            'images.*' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:5120'
+            'images' => 'nullable|array',
+            'images.*' => 'required|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
+
+        $files = [];
+
+        if ($request->hasFile('image')) {
+            $files[] = $request->file('image');
+        }
+
+        if ($request->hasFile('images')) {
+            $files = array_merge($files, $request->file('images'));
+        }
 
         $uploadedImages = [];
         $uploadPath = public_path('portal/uploads/objecten');
@@ -442,22 +450,20 @@ class PropertyController extends Controller
         // Get current image count for numbering
         $currentImageCount = $property->images()->count();
         
-        foreach ($request->file('images') as $index => $file) {
+        foreach ($files as $index => $file) {
             if (!$file->isValid()) {
                 continue;
             }
-            
-            // Sanitize filename
-            $originalName = $file->getClientOriginalName();
-            $sanitizedName = preg_replace('/\s+/', '_', $originalName);
-            $filename = time() . '_' . uniqid() . '_' . $sanitizedName;
-            
-            $file->move($uploadPath, $filename);
-            $path = '/uploads/objecten/' . $filename;
+
+            $stored = $imageService->storeOptimizedUpload($file, 'portal/uploads/objecten');
+            $path = '/uploads/objecten/' . $stored['filename'];
             
             // Process image: optimize and generate alt text
             $imageNumber = $currentImageCount + $index + 1;
-            $result = $imageService->processPropertyImage('portal' . $path, $property, $imageNumber);
+            $result = [
+                'optimized' => true,
+                'alt_text' => $imageService->generateAltText($property, $imageNumber),
+            ];
             
             // Create image record with alt text and next display order
             $image = $property->images()->create([
@@ -468,7 +474,7 @@ class PropertyController extends Controller
             
             $uploadedImages[] = [
                 'id' => $image->id,
-                'url' => asset($path)
+                'url' => asset('portal' . $path)
             ];
         }
         
@@ -516,10 +522,7 @@ class PropertyController extends Controller
 
     public function deleteImage(Property $property, PropertyImage $image)
     {
-        // Delete file from disk
-        if (file_exists(public_path($image->url))) {
-            unlink(public_path($image->url));
-        }
+        app(ImageService::class)->deleteImageWithVariants(public_path('portal' . $image->url));
         
         $image->delete();
         
@@ -529,9 +532,7 @@ class PropertyController extends Controller
     public function deleteAllImages(Property $property)
     {
         foreach ($property->images as $image) {
-            if (file_exists(public_path($image->url))) {
-                unlink(public_path($image->url));
-            }
+            app(ImageService::class)->deleteImageWithVariants(public_path('portal' . $image->url));
             $image->delete();
         }
         

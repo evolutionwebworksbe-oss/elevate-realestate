@@ -8,8 +8,8 @@ use App\Models\ProjectType;
 use App\Models\ProjectImage;
 use App\Models\ProjectVideo;
 use App\Models\ProjectDownload;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ProjectController extends Controller
 {
@@ -28,7 +28,7 @@ class ProjectController extends Controller
         return view('admin.projects.create', compact('projectTypes'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ImageService $imageService)
     {
         $validated = $request->validate([
             'title_nl'         => 'required|string|max:255',
@@ -60,7 +60,7 @@ class ProjectController extends Controller
         $validated['is_published'] = $request->boolean('is_published');
 
         if ($request->hasFile('featured_image')) {
-            $validated['featured_image'] = $this->storeImage($request->file('featured_image'));
+            $validated['featured_image'] = $this->storeImage($request->file('featured_image'), 'portal/projects', $imageService);
         }
 
         $project = Project::create($validated);
@@ -76,7 +76,7 @@ class ProjectController extends Controller
         return view('admin.projects.edit', compact('project', 'projectTypes'));
     }
 
-    public function update(Request $request, Project $project)
+    public function update(Request $request, Project $project, ImageService $imageService)
     {
         $validated = $request->validate([
             'title_nl'         => 'required|string|max:255',
@@ -104,15 +104,24 @@ class ProjectController extends Controller
         $validated['is_featured']  = $request->boolean('is_featured');
         $validated['is_published'] = $request->boolean('is_published');
 
+        $oldFeaturedPath = null;
         if ($request->hasFile('featured_image')) {
-            // Delete old featured image
-            if ($project->featured_image) {
-                @unlink(public_path('portal/projects/' . $project->featured_image));
-            }
-            $validated['featured_image'] = $this->storeImage($request->file('featured_image'));
+            $oldFeaturedPath = $project->featured_image ? public_path('portal/projects/' . $project->featured_image) : null;
+            $validated['featured_image'] = $this->storeImage($request->file('featured_image'), 'portal/projects', $imageService);
         }
 
-        $project->update($validated);
+        try {
+            $project->update($validated);
+
+            if ($oldFeaturedPath) {
+                $imageService->deleteImageWithVariants($oldFeaturedPath);
+            }
+        } catch (\Throwable $e) {
+            if (!empty($validated['featured_image'])) {
+                $imageService->deleteImageWithVariants(public_path('portal/projects/' . $validated['featured_image']));
+            }
+            throw $e;
+        }
 
         return redirect()->route('admin.projects.edit', $project)
             ->with('success', 'Project updated successfully.');
@@ -120,14 +129,16 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
+        $imageService = app(ImageService::class);
+
         // Delete featured image
         if ($project->featured_image) {
-            @unlink(public_path('portal/projects/' . $project->featured_image));
+            $imageService->deleteImageWithVariants(public_path('portal/projects/' . $project->featured_image));
         }
 
         // Delete gallery images
         foreach ($project->images as $image) {
-            @unlink(public_path('portal/projects/gallery/' . $image->path));
+            $imageService->deleteImageWithVariants(public_path('portal/projects/gallery/' . $image->path));
         }
 
         // Delete download files
@@ -145,20 +156,61 @@ class ProjectController extends Controller
 
     // ─── Gallery ────────────────────────────────────────────────────────────────
 
-    public function uploadGallery(Request $request, Project $project)
+    public function uploadGallery(Request $request, Project $project, ImageService $imageService)
     {
-        $request->validate(['images.*' => 'required|image|max:5120']);
+        $request->validate([
+            'images' => 'nullable|array',
+            'images.*' => 'required|image|max:5120',
+            'image' => 'nullable|image|max:5120',
+        ]);
+
+        $files = [];
+
+        if ($request->hasFile('image')) {
+            $files[] = $request->file('image');
+        }
+
+        if ($request->hasFile('images')) {
+            $files = array_merge($files, $request->file('images'));
+        }
+
+        if (count($files) === 0) {
+            $message = 'No images selected.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return back()->withErrors(['images' => $message]);
+        }
 
         $lastOrder = $project->images()->max('display_order') ?? -1;
+        $uploadedImages = [];
 
-        foreach ($request->file('images') as $file) {
-            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('portal/projects/gallery'), $filename);
+        foreach ($files as $file) {
+            $filename = $this->storeImage($file, 'portal/projects/gallery', $imageService);
 
-            ProjectImage::create([
+            $image = ProjectImage::create([
                 'project_id'    => $project->id,
                 'path'          => $filename,
                 'display_order' => ++$lastOrder,
+            ]);
+
+            $uploadedImages[] = [
+                'id' => $image->id,
+                'url' => asset('portal/projects/gallery/' . $image->path),
+                'path' => $image->path,
+            ];
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'images' => $uploadedImages,
+                'message' => count($uploadedImages) . ' image(s) uploaded.',
             ]);
         }
 
@@ -167,7 +219,7 @@ class ProjectController extends Controller
 
     public function deleteImage(Project $project, ProjectImage $image)
     {
-        @unlink(public_path('portal/projects/gallery/' . $image->path));
+        app(ImageService::class)->deleteImageWithVariants(public_path('portal/projects/gallery/' . $image->path));
         $image->delete();
 
         return back()->with('success', 'Image deleted.');
@@ -255,10 +307,10 @@ class ProjectController extends Controller
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
 
-    private function storeImage($file): string
+    private function storeImage($file, string $relativeDirectory, ImageService $imageService): string
     {
-        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $file->move(public_path('portal/projects'), $filename);
-        return $filename;
+        $stored = $imageService->storeOptimizedUpload($file, $relativeDirectory);
+
+        return $stored['filename'];
     }
 }

@@ -3,11 +3,15 @@
 namespace App\Services;
 
 use App\Models\Property;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
 class ImageService
 {
+    public const RESPONSIVE_WIDTHS = [480, 768, 1280, 1920];
+
     protected $imageManager;
     
     public function __construct()
@@ -25,25 +29,22 @@ class ImageService
      * @param bool $addWatermark Whether to add watermark
      * @return bool Success
      */
-    public function optimizeImage($sourcePath, $maxWidth = 1920, $maxHeight = 1080, $quality = 85, $addWatermark = false)
+    public function optimizeImage($sourcePath, $maxWidth = 2560, $maxHeight = 1600, $quality = 82, $addWatermark = false)
     {
         try {
             // Read the image
             $image = $this->imageManager->read($sourcePath);
-            
-            // Get current dimensions
-            $width = $image->width();
-            $height = $image->height();
-            
-            // Only resize if image is larger than max dimensions
-            if ($width > $maxWidth || $height > $maxHeight) {
-                // Calculate aspect ratio
-                $ratio = min($maxWidth / $width, $maxHeight / $height);
-                $newWidth = (int)($width * $ratio);
-                $newHeight = (int)($height * $ratio);
-                
-                // Resize image
-                $image->scale($newWidth, $newHeight);
+
+            // Respect EXIF orientation before resizing
+            $image->orient();
+
+            $originalWidth = $image->width();
+            $originalHeight = $image->height();
+
+            $image->scaleDown($maxWidth, $maxHeight);
+
+            if ($image->width() < $originalWidth || $image->height() < $originalHeight) {
+                $image->sharpen(6);
             }
             
             // Add watermark if requested
@@ -59,6 +60,189 @@ class ImageService
             \Log::error('Image optimization failed: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Store a delivery-optimized image for frontend usage.
+     *
+     * New property/project uploads are normalized to WebP with sensible
+     * display dimensions so a single uploaded photo is lightweight enough
+     * for desktop and mobile while still looking sharp.
+     */
+    public function storeOptimizedUpload(
+        UploadedFile $file,
+        string $relativeDirectory,
+        ?bool $addWatermark = null,
+        ?int $maxWidth = null,
+        ?int $maxHeight = null,
+        ?int $quality = null
+    ): array {
+        $relativeDirectory = trim($relativeDirectory, '/');
+        $fullDirectory = public_path($relativeDirectory);
+
+        if (!file_exists($fullDirectory)) {
+            mkdir($fullDirectory, 0755, true);
+        }
+
+        $maxWidth = $maxWidth ?? (int) \App\Models\Setting::get('image_max_width', 2560);
+        $maxHeight = $maxHeight ?? (int) \App\Models\Setting::get('image_max_height', 1600);
+        $quality = $quality ?? (int) \App\Models\Setting::get('image_quality', 82);
+
+        if ($addWatermark === null) {
+            $addWatermark = filter_var(\App\Models\Setting::get('watermark_enabled', false), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $image = $this->imageManager->read($file->getRealPath());
+        $image->orient();
+
+        $originalWidth = $image->width();
+        $originalHeight = $image->height();
+
+        $image->scaleDown($maxWidth, $maxHeight);
+
+        if ($image->width() < $originalWidth || $image->height() < $originalHeight) {
+            $image->sharpen(6);
+        }
+
+        if ($addWatermark) {
+            $this->addWatermark($image);
+        }
+
+        $baseName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeBaseName = Str::slug($baseName) ?: 'image';
+        $filename = time() . '_' . uniqid() . '_' . $safeBaseName . '.webp';
+        $fullPath = $fullDirectory . DIRECTORY_SEPARATOR . $filename;
+
+        $image->toWebp($quality)->save($fullPath);
+        $this->generateResponsiveVariants($fullPath, $image->width(), $quality);
+
+        return [
+            'filename' => $filename,
+            'full_path' => $fullPath,
+            'relative_path' => $relativeDirectory . '/' . $filename,
+            'width' => $image->width(),
+            'height' => $image->height(),
+            'format' => 'webp',
+        ];
+    }
+
+    public static function variantPath(string $relativePath, int $width): string
+    {
+        $info = pathinfo($relativePath);
+        $directory = $info['dirname'] ?? '';
+        $filename = $info['filename'] ?? '';
+        $variant = $filename . '__w' . $width . '.webp';
+
+        return ($directory && $directory !== '.')
+            ? $directory . '/' . $variant
+            : $variant;
+    }
+
+    public static function expectedResponsiveWidths(?int $sourceWidth = null): array
+    {
+        if (!$sourceWidth) {
+            return self::RESPONSIVE_WIDTHS;
+        }
+
+        return array_values(array_filter(
+            self::RESPONSIVE_WIDTHS,
+            fn (int $width) => $width < $sourceWidth
+        ));
+    }
+
+    public static function existingResponsiveVariantPaths(string $relativePath): array
+    {
+        static $cache = [];
+
+        $relativePath = ltrim($relativePath, '/');
+
+        if (array_key_exists($relativePath, $cache)) {
+            return $cache[$relativePath];
+        }
+
+        $paths = [];
+
+        foreach (self::RESPONSIVE_WIDTHS as $width) {
+            $variantRelativePath = self::variantPath($relativePath, $width);
+
+            if (file_exists(public_path($variantRelativePath))) {
+                $paths[$width] = $variantRelativePath;
+            }
+        }
+
+        return $cache[$relativePath] = $paths;
+    }
+
+    public function deleteImageWithVariants(string $fullPath): void
+    {
+        if (file_exists($fullPath)) {
+            @unlink($fullPath);
+        }
+
+        foreach (self::RESPONSIVE_WIDTHS as $width) {
+            $variantPath = self::variantPath($fullPath, $width);
+            if (file_exists($variantPath)) {
+                @unlink($variantPath);
+            }
+        }
+    }
+
+    private function generateResponsiveVariants(string $fullPath, int $originalWidth, int $quality): void
+    {
+        foreach (self::RESPONSIVE_WIDTHS as $width) {
+            if ($width >= $originalWidth) {
+                continue;
+            }
+
+            $variantPath = self::variantPath($fullPath, $width);
+            $variant = $this->imageManager->read($fullPath);
+            $variant->scaleDown($width, null);
+            $variant->sharpen(4);
+            $variant->toWebp($quality)->save($variantPath);
+        }
+    }
+
+    public function backfillResponsiveVariants(string $fullPath, ?int $quality = null): bool
+    {
+        try {
+            if (!file_exists($fullPath)) {
+                return false;
+            }
+
+            $quality = $quality ?? (int) \App\Models\Setting::get('image_quality', 82);
+            $image = $this->imageManager->read($fullPath);
+            $image->orient();
+
+            $this->generateResponsiveVariants($fullPath, $image->width(), $quality);
+
+            return true;
+        } catch (\Throwable $e) {
+            \Log::error('Responsive variant backfill failed: ' . $e->getMessage(), [
+                'path' => $fullPath,
+            ]);
+
+            return false;
+        }
+    }
+
+    public function hasCompleteResponsiveSet(string $fullPath): bool
+    {
+        if (!file_exists($fullPath)) {
+            return false;
+        }
+
+        [$sourceWidth] = @getimagesize($fullPath) ?: [null, null];
+        if (!$sourceWidth) {
+            return false;
+        }
+
+        foreach (self::expectedResponsiveWidths($sourceWidth) as $width) {
+            if (!file_exists(self::variantPath($fullPath, $width))) {
+                return false;
+            }
+        }
+
+        return true;
     }
     
     /**
@@ -206,9 +390,9 @@ class ImageService
         }
         
         // Get optimization settings from database
-        $maxWidth = (int)\App\Models\Setting::get('image_max_width', 1920);
-        $maxHeight = (int)\App\Models\Setting::get('image_max_height', 1080);
-        $quality = (int)\App\Models\Setting::get('image_quality', 85);
+        $maxWidth = (int)\App\Models\Setting::get('image_max_width', 2560);
+        $maxHeight = (int)\App\Models\Setting::get('image_max_height', 1600);
+        $quality = (int)\App\Models\Setting::get('image_quality', 82);
         
         // Optimize image (with optional watermark)
         $optimized = $this->optimizeImage($fullPath, $maxWidth, $maxHeight, $quality, $addWatermark);

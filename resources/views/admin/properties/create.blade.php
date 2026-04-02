@@ -268,6 +268,40 @@
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            <div>
+                                <label for="latitude" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Latitude
+                                </label>
+                                <input type="number"
+                                       name="latitude"
+                                       id="latitude"
+                                       step="0.0000001"
+                                       value="{{ old('latitude') }}"
+                                       placeholder="5.8520000"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <p class="mt-1 text-xs text-gray-500">Gebruik decimale coordinaten voor de kaartmarker.</p>
+                                @error('latitude')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="longitude" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Longitude
+                                </label>
+                                <input type="number"
+                                       name="longitude"
+                                       id="longitude"
+                                       step="0.0000001"
+                                       value="{{ old('longitude') }}"
+                                       placeholder="-55.2038000"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <p class="mt-1 text-xs text-gray-500">Laat leeg om de standaardkaartlocatie te gebruiken.</p>
+                                @error('longitude')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>

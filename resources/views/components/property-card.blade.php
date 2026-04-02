@@ -39,9 +39,12 @@
         <!-- Image -->
         <div class="relative h-72 overflow-hidden rounded-b-3xl">
             @if($property->featuredFoto)
-                <img src="{{ asset('portal' . $property->featuredFoto) }}" 
-                    alt="{{ $name }}"
-                    class="w-full h-full object-cover transition duration-500">
+                <x-responsive-image
+                    :path="'portal' . $property->featuredFoto"
+                    :alt="$name"
+                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                    class="w-full h-full object-cover transition duration-500"
+                />
             @else
                 <div class="w-full h-full bg-gray-200 flex items-center justify-center">
                     <i class="fas fa-home text-5xl text-gray-400"></i>

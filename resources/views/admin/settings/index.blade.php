@@ -54,7 +54,7 @@
                             <input type="number" 
                                    name="image_max_width" 
                                    id="image_max_width"
-                                   value="{{ old('image_max_width', $imageSettings->where('key', 'image_max_width')->first()->value ?? 1920) }}"
+                                   value="{{ old('image_max_width', $imageSettings->where('key', 'image_max_width')->first()->value ?? 2560) }}"
                                    min="800" 
                                    max="4000"
                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -71,7 +71,7 @@
                             <input type="number" 
                                    name="image_max_height" 
                                    id="image_max_height"
-                                   value="{{ old('image_max_height', $imageSettings->where('key', 'image_max_height')->first()->value ?? 1080) }}"
+                                   value="{{ old('image_max_height', $imageSettings->where('key', 'image_max_height')->first()->value ?? 1600) }}"
                                    min="600" 
                                    max="3000"
                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -89,13 +89,13 @@
                                 <input type="range" 
                                        name="image_quality" 
                                        id="image_quality"
-                                       value="{{ old('image_quality', $imageSettings->where('key', 'image_quality')->first()->value ?? 85) }}"
+                                       value="{{ old('image_quality', $imageSettings->where('key', 'image_quality')->first()->value ?? 82) }}"
                                        min="50" 
                                        max="100"
                                        class="flex-1"
                                        oninput="document.getElementById('quality_display').textContent = this.value + '%'">
                                 <span id="quality_display" class="text-sm font-medium text-gray-700 min-w-[3rem]">
-                                    {{ old('image_quality', $imageSettings->where('key', 'image_quality')->first()->value ?? 85) }}%
+                                    {{ old('image_quality', $imageSettings->where('key', 'image_quality')->first()->value ?? 82) }}%
                                 </span>
                             </div>
                             @error('image_quality')
