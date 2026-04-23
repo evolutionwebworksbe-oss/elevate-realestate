@@ -103,14 +103,11 @@
                                 class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                             Save Changes
                         </button>
-                        <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
-                              class="mt-2" onsubmit="return confirm('Delete this project and all media?')">
-                            @csrf @method('DELETE')
-                            <button type="submit"
-                                    class="w-full bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded text-sm">
-                                <i class="fas fa-trash mr-1"></i> Delete Project
-                            </button>
-                        </form>
+                        <button type="button"
+                                onclick="if(confirm('Delete this project and all media?')) document.getElementById('deleteProjectForm').submit()"
+                                class="mt-2 w-full bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded text-sm">
+                            <i class="fas fa-trash mr-1"></i> Delete Project
+                        </button>
                     </div>
 
                     <div class="bg-white shadow-sm rounded-lg p-6">
@@ -204,6 +201,10 @@
 
                 </div>
             </div>
+        </form>
+
+        <form id="deleteProjectForm" action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="hidden">
+            @csrf @method('DELETE')
         </form>
 
         {{-- ═══════════════════════════════════════ GALLERY ══ --}}

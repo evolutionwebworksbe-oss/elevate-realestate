@@ -1,27 +1,32 @@
-<x-app-layout>
-    <x-slot name="title">Projecten - Elevate Real Estate</x-slot>
+<x-luxury-layout>
+    <x-slot name="title">Projecten — Elevate Luxury Living</x-slot>
 
-    <!-- Hero -->
-    <div class="bg-gradient-to-br from-primary-dark to-primary text-white py-20">
-        <div class="container mx-auto px-4 text-center">
-            <h1 class="text-4xl md:text-5xl font-bold mb-4">{{ app()->getLocale() === 'en' ? 'Our Projects' : 'Onze Projecten' }}</h1>
-            <p class="text-xl text-gray-200 max-w-2xl mx-auto">
-                {{ app()->getLocale() === 'en' ? 'Discover our real estate developments and portfolio.' : 'Ontdek onze vastgoedontwikkelingen en portfolio.' }}
-            </p>
+    {{-- ═══ HERO ══ --}}
+    <section class="relative overflow-hidden" style="background-color: #0A0A0A; min-height: 360px;">
+        <div class="absolute inset-0 opacity-10"
+             style="background: radial-gradient(circle at top right, #C9A84C, transparent 65%);"></div>
+        <div class="relative max-w-6xl mx-auto px-6 py-28 flex flex-col justify-center" style="min-height: 360px;">
+            <p class="text-xs font-semibold uppercase tracking-[.3em] mb-5" style="color: #C9A84C;">Elevate Luxury Living</p>
+            <h1 class="lux-heading text-5xl md:text-6xl font-semibold mb-6" style="font-family: 'Cormorant Garamond', serif;">
+                {{ app()->getLocale() === 'en' ? 'Our Projects' : 'Onze Projecten' }}
+            </h1>
+            <div class="gold-divider w-24"></div>
         </div>
-    </div>
+    </section>
 
-    <!-- Filters -->
+    {{-- ═══ FILTERS ══ --}}
     @if($projectTypes->count() > 0)
-    <div class="bg-white border-b py-4">
-        <div class="container mx-auto px-4 flex flex-wrap gap-3 justify-center">
+    <div style="background-color: #141414; border-bottom: 1px solid rgba(201,168,76,0.15);">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex flex-wrap gap-2">
             <a href="{{ route('projects.index') }}"
-               class="px-4 py-2 rounded-full text-sm font-medium {{ !request('type') ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+               class="px-4 py-2 rounded-sm text-xs font-semibold tracking-[.15em] uppercase transition"
+               style="{{ !request('type') ? 'background: linear-gradient(135deg,#C9A84C,#E2C97E); color:#0A0A0A;' : 'border:1px solid rgba(201,168,76,0.25); color:#9A9080;' }}">
                 {{ app()->getLocale() === 'en' ? 'All' : 'Alles' }}
             </a>
             @foreach($projectTypes as $type)
             <a href="{{ route('projects.index', ['type' => $type->id]) }}"
-               class="px-4 py-2 rounded-full text-sm font-medium {{ request('type') == $type->id ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+               class="px-4 py-2 rounded-sm text-xs font-semibold tracking-[.15em] uppercase transition"
+               style="{{ request('type') == $type->id ? 'background: linear-gradient(135deg,#C9A84C,#E2C97E); color:#0A0A0A;' : 'border:1px solid rgba(201,168,76,0.25); color:#9A9080;' }}">
                 {{ $type->getTranslatedName() }}
             </a>
             @endforeach
@@ -29,72 +34,84 @@
     </div>
     @endif
 
-    <!-- Projects Grid -->
-    <div class="py-16 bg-gray-50">
-        <div class="container mx-auto px-4 max-w-6xl">
+    {{-- ═══ GRID ══ --}}
+    <section class="py-20 lux-bg-soft">
+        <div class="max-w-6xl mx-auto px-6">
             @if($projects->count() > 0)
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($projects as $project)
                     <a href="{{ route('projects.show', $project->slug) }}"
-                       class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
-                        <div class="relative h-52 bg-gray-100 overflow-hidden">
+                       class="group lux-card rounded-sm overflow-hidden block">
+
+                        {{-- Image --}}
+                        <div class="relative overflow-hidden" style="height: 220px; background:#1C1C1C;">
                             @if($project->featured_image)
                                 <x-responsive-image
                                     :path="'portal/projects/' . $project->featured_image"
                                     :alt="$project->getTranslatedTitle()"
                                     sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                 />
                             @else
-                                <div class="w-full h-full flex items-center justify-center text-gray-300">
+                                <div class="w-full h-full flex items-center justify-center" style="color:#2A2A2A;">
                                     <i class="fas fa-building text-5xl"></i>
                                 </div>
                             @endif
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all duration-500"></div>
+
                             @if($project->is_featured)
-                                <span class="absolute top-3 left-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded">
+                                <span class="absolute top-3 left-3 text-xs font-semibold px-3 py-1 rounded-sm"
+                                      style="background:linear-gradient(135deg,#C9A84C,#E2C97E); color:#0A0A0A;">
                                     <i class="fas fa-star mr-1"></i>Featured
                                 </span>
                             @endif
-                            <span class="absolute top-3 right-3 text-xs font-medium px-2 py-1 rounded
-                                {{ $project->status === 'completed' ? 'bg-green-600 text-white' : '' }}
-                                {{ $project->status === 'ongoing' ? 'bg-blue-600 text-white' : '' }}
-                                {{ $project->status === 'coming_soon' ? 'bg-yellow-500 text-white' : '' }}
-                                {{ $project->status === 'planning' ? 'bg-gray-600 text-white' : '' }}">
-                                {{ $project->status_label }}
-                            </span>
                         </div>
+
+                        {{-- Body --}}
                         <div class="p-5">
-                            <div class="flex items-center gap-2 mb-2">
+                            <div class="flex items-center gap-2 mb-3 text-xs" style="color:#6A6050;">
                                 @if($project->projectType)
-                                    <span class="text-xs text-primary font-medium">{{ $project->projectType->getTranslatedName() }}</span>
+                                    <span style="color:#C9A84C; font-weight:600;">{{ $project->projectType->getTranslatedName() }}</span>
+                                    <span>·</span>
                                 @endif
                                 @if($project->location)
-                                    <span class="text-xs text-gray-400"><i class="fas fa-map-marker-alt mr-1"></i>{{ $project->location }}</span>
+                                    <span><i class="fas fa-map-marker-alt mr-1"></i>{{ $project->location }}</span>
                                 @endif
                             </div>
-                            <h3 class="text-lg font-bold text-gray-900 mb-2">{{ $project->getTranslatedTitle() }}</h3>
+
+                            <h3 class="font-semibold mb-2 group-hover:text-[#C9A84C] transition-colors"
+                                style="color:#F5F0E8; letter-spacing:.02em;">
+                                {{ $project->getTranslatedTitle() }}
+                            </h3>
+
                             @if($project->getTranslatedExcerpt())
-                                <p class="text-sm text-gray-500 line-clamp-2">{{ $project->getTranslatedExcerpt() }}</p>
+                                <p class="text-sm line-clamp-2 mb-4" style="color:#6A6050;">
+                                    {{ $project->getTranslatedExcerpt() }}
+                                </p>
                             @endif
-                            <div class="flex items-center gap-4 mt-4 text-xs text-gray-400">
+
+                            <div class="flex items-center gap-4 pt-4 text-xs" style="border-top:1px solid rgba(201,168,76,0.1); color:#5A5040;">
                                 @if($project->total_units)
                                     <span><i class="fas fa-home mr-1"></i>{{ $project->total_units }} units</span>
                                 @endif
                                 @if($project->total_area)
                                     <span><i class="fas fa-ruler-combined mr-1"></i>{{ number_format($project->total_area) }} m²</span>
                                 @endif
+                                <span class="ml-auto text-xs font-semibold tracking-widest uppercase" style="color:#C9A84C;">
+                                    Bekijk <i class="fas fa-arrow-right ml-1"></i>
+                                </span>
                             </div>
                         </div>
                     </a>
                     @endforeach
                 </div>
             @else
-                <div class="text-center py-20 text-gray-400">
-                    <i class="fas fa-building text-5xl mb-4"></i>
-                    <p class="text-lg">{{ app()->getLocale() === 'en' ? 'No projects yet.' : 'Nog geen projecten.' }}</p>
+                <div class="text-center py-28">
+                    <i class="fas fa-building text-5xl mb-6" style="color:#2A2A2A;"></i>
+                    <p class="lux-muted text-lg">{{ app()->getLocale() === 'en' ? 'No projects yet.' : 'Nog geen projecten.' }}</p>
                 </div>
             @endif
         </div>
-    </div>
+    </section>
 
-</x-app-layout>
+</x-luxury-layout>
