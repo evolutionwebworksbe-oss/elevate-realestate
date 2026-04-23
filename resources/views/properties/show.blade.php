@@ -37,6 +37,7 @@
         $metaDescription = Str::limit(strip_tags($propertyDescription), 160);
         $featuredImage = $property->featuredFoto ? asset('portal' . $property->featuredFoto) : asset('portal/img/logo.png');
         $currentUrl = url()->current();
+        $hasCoordinates = filled($property->latitude) && filled($property->longitude);
     @endphp
     
     @push('styles')
@@ -541,10 +542,12 @@
             @endif
 
             <!-- Map -->
+            @if($hasCoordinates)
             <div class="mb-8">
                 <h2 class="text-2xl font-bold text-dark mb-4">{{ __('messages.location') }}</h2>
                 <div id="map" class="w-full h-96 rounded-xl bg-gray-100 relative z-0"></div>
             </div>
+            @endif
         </div>
 
         <!-- Sidebar -->
@@ -704,7 +707,7 @@
     @if($similarProperties->count() > 3)
     <div class="mt-16 hidden lg:block">
         <h2 class="text-3xl font-bold text-dark mb-8">{{ __('messages.similar_properties') }}</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             @foreach($similarProperties as $similar)
                 <x-property-card :property="$similar" />
             @endforeach
@@ -775,12 +778,14 @@ function propertyDetail() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    @if($hasCoordinates)
     const map = L.map('map').setView([{{ $property->latitude ?? '5.8520' }}, {{ $property->longitude ?? '-55.2038' }}], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
     L.marker([{{ $property->latitude ?? '5.8520' }}, {{ $property->longitude ?? '-55.2038' }}]).addTo(map)
-        .bindPopup('{{ $propertyName }}').openPopup();
+        .bindPopup(@json($propertyName)).openPopup();
+    @endif
 });
 </script>
 @endpush

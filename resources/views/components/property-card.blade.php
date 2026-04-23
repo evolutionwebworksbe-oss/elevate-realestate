@@ -110,19 +110,19 @@
                 <h3 class="text-xl font-bold text-dark flex-1 pr-4 line-clamp-2">
                     {{ $name }}
                 </h3>
-                
                 <!-- Price - Right -->
+                @php $currencyName = $property->currencyRelation->name ?? '$'; @endphp
                 <div class="text-right flex-shrink-0">
                     @if($property->discount && $property->discount > 0 && $property->discount < $property->vraagPrijs)
                         <div class="text-2xl font-bold text-dark">
-                            ${{ number_format($property->discount, 0, ',', '.') }}
+                            {{ $currencyName }} {{ number_format($property->discount, 0, ',', '.') }}
                         </div>
                         <div class="text-sm text-gray-400 line-through">
-                            ${{ number_format($property->vraagPrijs, 0, ',', '.') }}
+                            {{ $currencyName }} {{ number_format($property->vraagPrijs, 0, ',', '.') }}
                         </div>
                     @else
                         <div class="text-2xl font-bold text-dark">
-                            ${{ number_format($property->vraagPrijs, 0, ',', '.') }}
+                            {{ $currencyName }} {{ number_format($property->vraagPrijs, 0, ',', '.') }}
                         </div>
                     @endif
                 </div>

@@ -377,6 +377,61 @@
             document.getElementById('description_en').value = quillEn.root.innerHTML;
         });
 
+        const imageUploadUtils = window.ImageUploadUtils || (() => {
+            function readFileAsDataUrl(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = event => resolve(event.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            function loadImage(source) {
+                return new Promise((resolve, reject) => {
+                    const image = new Image();
+                    image.onload = () => resolve(image);
+                    image.onerror = reject;
+                    image.src = source;
+                });
+            }
+
+            async function compressImageFile(file, options = {}) {
+                const maxWidth = options.maxWidth || 1920;
+                const maxHeight = options.maxHeight || 1080;
+                const quality = options.quality || 0.82;
+
+                if (!file.type.startsWith('image/')) {
+                    return file;
+                }
+
+                const source = await readFileAsDataUrl(file);
+                const image = await loadImage(source);
+                const canvas = document.createElement('canvas');
+                const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+                const width = Math.round(image.width * ratio);
+                const height = Math.round(image.height * ratio);
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const context = canvas.getContext('2d');
+                context.drawImage(image, 0, 0, width, height);
+
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+                if (!blob || blob.size >= file.size) {
+                    return file;
+                }
+
+                return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                });
+            }
+
+            return { compressImageFile };
+        })();
+
         const galleryInput = document.getElementById('projectGalleryInput');
         const galleryUploadButton = document.getElementById('projectGalleryUploadButton');
         const progressPanel = document.getElementById('projectGalleryProgressPanel');
@@ -393,7 +448,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
-        const { compressImageFile } = window.ImageUploadUtils;
+        const { compressImageFile } = imageUploadUtils;
 
         function renderGalleryImage(image) {
             const wrapper = document.createElement('div');

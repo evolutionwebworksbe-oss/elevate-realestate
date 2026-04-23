@@ -264,6 +264,17 @@
                                        value="{{ old('directions') }}"
                                        placeholder="https://maps.google.com/..."
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <button type="button"
+                                            id="extractCoordinatesButton"
+                                            disabled
+                                            class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600">
+                                        Coordinaten uit link halen
+                                    </button>
+                                    <p id="extractCoordinatesHint" class="text-xs text-gray-500">
+                                        Voeg eerst een Google Maps-link met coordinaten toe.
+                                    </p>
+                                </div>
                                 @error('directions')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -744,6 +755,11 @@
         const subTypeSelect = document.getElementById('objectSubType_id');
         const districtSelect = document.getElementById('district_id');
         const omgevingSelect = document.getElementById('omgeving_id');
+        const directionsInput = document.getElementById('directions');
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
+        const extractCoordinatesButton = document.getElementById('extractCoordinatesButton');
+        const extractCoordinatesHint = document.getElementById('extractCoordinatesHint');
         
         function getFieldContainer(inputName) {
             const input = document.querySelector(`[name="${inputName}"]`);
@@ -836,6 +852,122 @@
             }
         }
 
+        function isValidCoordinatePair(latitude, longitude) {
+            return Number.isFinite(latitude)
+                && Number.isFinite(longitude)
+                && latitude >= -90
+                && latitude <= 90
+                && longitude >= -180
+                && longitude <= 180;
+        }
+
+        function parseCoordinatePair(value) {
+            if (!value) {
+                return null;
+            }
+
+            const match = value.match(/(-?\d{1,3}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/);
+            if (!match) {
+                return null;
+            }
+
+            const latitude = Number.parseFloat(match[1]);
+            const longitude = Number.parseFloat(match[2]);
+
+            return isValidCoordinatePair(latitude, longitude) ? { latitude, longitude } : null;
+        }
+
+        function parseDmsCoordinates(value) {
+            if (!value) {
+                return null;
+            }
+
+            const match = value.match(/(\d{1,3})°\s*(\d{1,2})'?\s*(\d{1,2}(?:\.\d+)?)"?\s*([NS]).*?(\d{1,3})°\s*(\d{1,2})'?\s*(\d{1,2}(?:\.\d+)?)"?\s*([EW])/i);
+            if (!match) {
+                return null;
+            }
+
+            const toDecimal = (degrees, minutes, seconds, direction) => {
+                const absolute = Number.parseFloat(degrees)
+                    + (Number.parseFloat(minutes) / 60)
+                    + (Number.parseFloat(seconds) / 3600);
+                return ['S', 'W'].includes(direction.toUpperCase()) ? -absolute : absolute;
+            };
+
+            const latitude = toDecimal(match[1], match[2], match[3], match[4]);
+            const longitude = toDecimal(match[5], match[6], match[7], match[8]);
+
+            return isValidCoordinatePair(latitude, longitude) ? { latitude, longitude } : null;
+        }
+
+        function extractCoordinatesFromDirections(urlValue) {
+            const trimmedValue = urlValue.trim();
+            if (!trimmedValue) {
+                return { coordinates: null, reason: 'Voeg eerst een Google Maps-link toe.' };
+            }
+
+            const decodedValue = decodeURIComponent(trimmedValue);
+            const dmsCoordinates = parseDmsCoordinates(decodedValue);
+            if (dmsCoordinates) {
+                return { coordinates: dmsCoordinates, reason: null };
+            }
+            const directPatterns = [
+                /@(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/,
+                /!3d(-?\d{1,3}(?:\.\d+)?)[^!]*!4d(-?\d{1,3}(?:\.\d+)?)/,
+            ];
+
+            for (const pattern of directPatterns) {
+                const match = decodedValue.match(pattern);
+                if (!match) {
+                    continue;
+                }
+
+                const latitude = Number.parseFloat(match[1]);
+                const longitude = Number.parseFloat(match[2]);
+
+                if (isValidCoordinatePair(latitude, longitude)) {
+                    return { coordinates: { latitude, longitude }, reason: null };
+                }
+            }
+
+            try {
+                const parsedUrl = new URL(trimmedValue);
+                const paramsToCheck = ['q', 'll', 'query', 'destination'];
+
+                for (const key of paramsToCheck) {
+                    const coordinates = parseCoordinatePair(parsedUrl.searchParams.get(key) || '');
+                    if (coordinates) {
+                        return { coordinates, reason: null };
+                    }
+                }
+
+                const pathCoordinates = parseCoordinatePair(parsedUrl.pathname);
+                if (pathCoordinates) {
+                    return { coordinates: pathCoordinates, reason: null };
+                }
+            } catch (error) {
+                const rawCoordinates = parseCoordinatePair(decodedValue);
+                if (rawCoordinates) {
+                    return { coordinates: rawCoordinates, reason: null };
+                }
+
+                return { coordinates: null, reason: 'De link is geen geldige URL of bevat geen herkenbare coordinaten.' };
+            }
+
+            return { coordinates: null, reason: 'Geen coordinaten gevonden in deze Google Maps-link.' };
+        }
+
+        function updateExtractCoordinatesState() {
+            const { coordinates, reason } = extractCoordinatesFromDirections(directionsInput.value);
+            const isEnabled = Boolean(coordinates);
+
+            extractCoordinatesButton.disabled = !isEnabled;
+            extractCoordinatesHint.textContent = isEnabled
+                ? 'Coordinaten gevonden. Klik om latitude en longitude automatisch in te vullen.'
+                : reason;
+            extractCoordinatesHint.className = `text-xs ${isEnabled ? 'text-green-600' : 'text-gray-500'}`;
+        }
+
         objectTypeSelect.addEventListener('change', () => {
             filterSubTypes();
             updateFieldVisibility();
@@ -843,10 +975,24 @@
         
         subTypeSelect.addEventListener('change', updateFieldVisibility);
         districtSelect.addEventListener('change', filterOmgevingen);
+        directionsInput.addEventListener('input', updateExtractCoordinatesState);
+        extractCoordinatesButton.addEventListener('click', () => {
+            const { coordinates } = extractCoordinatesFromDirections(directionsInput.value);
+            if (!coordinates) {
+                updateExtractCoordinatesState();
+                return;
+            }
+
+            latitudeInput.value = coordinates.latitude.toFixed(7);
+            longitudeInput.value = coordinates.longitude.toFixed(7);
+            extractCoordinatesHint.textContent = 'Latitude en longitude zijn ingevuld vanuit de link.';
+            extractCoordinatesHint.className = 'text-xs text-green-600';
+        });
 
         filterSubTypes();
         updateFieldVisibility();
         filterOmgevingen();
+        updateExtractCoordinatesState();
     });
     </script>
     @endpush
